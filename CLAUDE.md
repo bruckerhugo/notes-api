@@ -11,21 +11,24 @@ REST API for notes (CRUD, FastAPI, SQLite via SQLAlchemy 2.0, Pydantic v2) plus 
 The venv has no system `python3-venv` package: it was created with `python3 -m venv --without-pip .venv`, then pip was bootstrapped with `python3 -m pip --python .venv/bin/python install pip`. Always use the `.venv/bin/` binaries.
 
 ```bash
-.venv/bin/pip install -e ".[dev]"                     # install (dev extras: pytest, httpx, pytest-cov)
+.venv/bin/pip install -e ".[dev]"                     # install (dev extras: pytest, httpx, pytest-cov, ruff, pre-commit)
+.venv/bin/pre-commit install                          # install Git hooks (pre-commit + pre-push)
 .venv/bin/pytest -q                                   # all tests
 .venv/bin/pytest tests/backend/test_health.py::test_health_returns_ok   # single test
 .venv/bin/pytest -k create_note                       # tests matching a name
 .venv/bin/pytest --cov                                # coverage (config in pyproject: source=backend, branch, show_missing)
 .venv/bin/pytest --cov --cov-report=html              # HTML report in htmlcov/
+.venv/bin/ruff check --fix . && .venv/bin/ruff format .   # lint + format (config in pyproject)
+.venv/bin/pre-commit run --all-files                  # run commit hooks manually
 .venv/bin/uvicorn backend.main:app --reload           # run API (DB: sqlite:///notes.db), docs at /docs
 DATABASE_URL=sqlite:////tmp/notes.db .venv/bin/uvicorn backend.main:app   # run API on another DB
 ```
 
-Planned and not set up yet: `ruff` (lint/format), a 90% coverage threshold, and `pre-commit` hooks. Once they exist, Qt tests must run with `QT_QPA_PLATFORM=offscreen`.
+Hooks are defined in `.pre-commit-config.yaml` and are all local, using the `.venv` binaries. The pre-commit hook runs compileall, ruff check, ruff format --check and `pytest -x`. The pre-push hook runs coverage and fails below 90%. Both hooks set `QT_QPA_PLATFORM=offscreen` for the future Qt tests.
 
 ## Workflow rules
 
-- **Strict TDD**: write the failing test first, run it to see it fail, write the minimal code, then refactor. Commit only when tests are green, because the planned pre-commit hook blocks commits on syntax errors, test collection errors, lint failures or failing tests. Never use `--no-verify`.
+- **Strict TDD**: write the failing test first, run it to see it fail, write the minimal code, then refactor. Commit only when tests are green, because the pre-commit hook blocks commits on syntax errors, test collection errors, lint failures or failing tests. Never use `--no-verify`.
 - Planned Git flow: one branch per step, PR to `main`, merge only when CI is green (GitHub Actions: `lint`, `test-backend`, `test-desktop`). The local branch is currently `master` and has no remote yet.
 
 ## Architecture

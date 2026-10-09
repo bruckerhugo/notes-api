@@ -1,0 +1,42 @@
+# Git hooks: block commits that do not compile, fail lint or fail tests.
+# Install with: .venv/bin/pre-commit install
+# All hooks use the project's .venv so tool versions match pyproject.toml.
+default_install_hook_types: [pre-commit, pre-push]
+default_stages: [pre-commit]
+
+repos:
+  - repo: local
+    hooks:
+      - id: compile
+        name: python compiles (syntax check)
+        entry: .venv/bin/python -m compileall -q backend tests
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: ruff-check
+        name: ruff lint
+        entry: .venv/bin/ruff check
+        language: system
+        types: [python]
+
+      - id: ruff-format
+        name: ruff format check
+        entry: .venv/bin/ruff format --check
+        language: system
+        types: [python]
+
+      - id: pytest
+        name: pytest (fail fast; also catches test collection errors)
+        entry: env QT_QPA_PLATFORM=offscreen .venv/bin/pytest -x -q -p no:cacheprovider
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: pytest-coverage
+        name: pytest with coverage >= 90%
+        entry: env QT_QPA_PLATFORM=offscreen .venv/bin/pytest -q -p no:cacheprovider --cov --cov-fail-under=90
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

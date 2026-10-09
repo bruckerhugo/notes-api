@@ -21,6 +21,7 @@ git clone <repo-url> notes-api
 cd notes-api
 python3 -m venv .venv
 .venv/bin/pip install -e ".[dev]"
+.venv/bin/pre-commit install      # Git hooks, see "Quality gates" below
 ```
 
 > **Debian/Ubuntu (incl. WSL):** if `python3 -m venv` fails with *"ensurepip is not available"*, you have two options:
@@ -120,6 +121,26 @@ TOTAL                            72      4      0      0    94%
   - `engine`: the in-memory engine; the schema is created and dropped for each test.
 - `tests/backend/`: API tests, one file per feature.
 
+## Quality gates
+
+Git hooks managed by [pre-commit](https://pre-commit.com/) (`.pre-commit-config.yaml`) block bad commits. Install them once after cloning with `.venv/bin/pre-commit install`.
+
+| Hook | Runs | Blocks when |
+|---|---|---|
+| `pre-commit` | on every `git commit` | Python does not compile, `ruff check` or `ruff format --check` fails, or any test fails (including test collection errors) |
+| `pre-push` | on every `git push` | total coverage is below 90% |
+
+Lint and formatting use [ruff](https://docs.astral.sh/ruff/), configured in `pyproject.toml`:
+
+```bash
+.venv/bin/ruff check .               # lint
+.venv/bin/ruff check --fix .         # lint and auto-fix
+.venv/bin/ruff format .              # format code
+.venv/bin/pre-commit run --all-files # run all commit hooks manually
+```
+
+Commit only when tests are green. Do not bypass the hooks with `--no-verify`.
+
 ## Project layout
 
 ```
@@ -131,7 +152,7 @@ CLAUDE.md    guidance for Claude Code when working in this repo
 ## Roadmap
 
 1. ✅ Project skeleton + first passing test
-2. Pre-commit hooks that block commits on syntax errors, lint failures or failing tests
+2. ✅ Pre-commit hooks that block commits on syntax errors, lint failures or failing tests
 3. GitHub repository + CI pipeline (GitHub Actions) + branch protection
 4. ✅ Database layer (SQLAlchemy + SQLite)
 5. 🚧 CRUD layer (create, list, delete done)
