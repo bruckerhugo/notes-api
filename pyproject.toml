@@ -1,0 +1,22 @@
+[project]
+name = "notes-api"
+version = "0.1.0"
+description = "API REST de notes (FastAPI + SQLite) avec interface desktop"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "httpx",
+]
+
+[tool.setuptools]
+packages = ["backend"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
