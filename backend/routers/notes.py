@@ -48,8 +48,19 @@ def list_notes(
     return crud.list_notes(db, skip=skip, limit=limit)
 
 
+def _get_note_or_404(db: Session, note_id: int) -> Note:
+    note = crud.get_note(db, note_id)
+    if note is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+    return note
+
+
+@router.get("/{note_id}", response_model=NoteRead)
+def get_note(note_id: NoteId, db: DbSession) -> Note:
+    return _get_note_or_404(db, note_id)
+
+
 @router.delete("/{note_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_note(note_id: NoteId, db: DbSession) -> Response:
-    if not crud.delete_note(db, note_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+    crud.delete_note(db, _get_note_or_404(db, note_id))
     return Response(status_code=status.HTTP_204_NO_CONTENT)

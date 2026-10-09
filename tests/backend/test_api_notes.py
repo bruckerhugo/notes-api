@@ -268,3 +268,48 @@ def test_note_timestamps_read_from_database_are_utc_aware(
 
     assert note.created_at.utcoffset() == timedelta(0)
     assert note.updated_at.utcoffset() == timedelta(0)
+
+
+def test_get_note_returns_the_note(client: TestClient) -> None:
+    created = client.post("/notes", json={"title": "Read me", "content": "Body"}).json()
+
+    response = client.get(f"/notes/{created['id']}")
+
+    assert response.status_code == 200
+    assert response.json() == created
+
+
+def test_get_note_returns_the_requested_note_among_several(client: TestClient) -> None:
+    _, middle, _ = _create_notes(client, "first", "middle", "last")
+
+    response = client.get(f"/notes/{middle}")
+
+    assert response.status_code == 200
+    assert response.json()["title"] == "middle"
+
+
+def test_get_note_returns_404_when_note_does_not_exist(client: TestClient) -> None:
+    _create_notes(client, "exists")
+
+    response = client.get("/notes/999")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Note not found"}
+
+
+def test_get_note_returns_404_for_a_deleted_note(client: TestClient) -> None:
+    [note_id] = _create_notes(client, "deleted")
+    client.delete(f"/notes/{note_id}")
+
+    response = client.get(f"/notes/{note_id}")
+
+    assert response.status_code == 404
+
+
+@pytest.mark.parametrize("bad_id", ["abc", "1.0", "1_0", str(MAX_INT64 + 1)])
+def test_get_note_rejects_invalid_id(client: TestClient, bad_id: str) -> None:
+    _create_notes(client, *[f"note {i}" for i in range(10)])
+
+    response = client.get(f"/notes/{bad_id}")
+
+    assert response.status_code == 422
