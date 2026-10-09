@@ -55,8 +55,8 @@ DATABASE_URL=sqlite:////tmp/notes.db .venv/bin/uvicorn backend.main:app --reload
 |--------|----------|-------------------|--------------------------------------------|
 | GET    | `/health`| Health check      | `200`                                      |
 | POST   | `/notes` | Create a note     | `201` created note, `422` invalid payload  |
-| GET    | `/notes` | List notes (ordered by id), paginated with `skip` (≥ 0, default 0) and `limit` (1–100, default 100) | `200` list of notes, `422` invalid params |
-| DELETE | `/notes/{id}` | Delete a note | `204` no content, `404` note not found, `422` non-integer id |
+| GET    | `/notes` | List notes (ordered by id), paginated with `skip` (0 to 2⁶³−1, default 0) and `limit` (1–100, default 100) | `200` list of notes, `422` invalid params |
+| DELETE | `/notes/{id}` | Delete a note | `204` no content, `404` note not found, `422` invalid id (not an integer, or outside the 64-bit range) |
 
 Example:
 

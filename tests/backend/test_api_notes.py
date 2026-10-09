@@ -138,3 +138,39 @@ def test_delete_note_rejects_non_integer_id(client: TestClient) -> None:
     response = client.delete("/notes/abc")
 
     assert response.status_code == 422
+
+
+MAX_INT64 = 2**63 - 1
+
+
+def test_delete_note_with_id_beyond_int64_returns_422(client: TestClient) -> None:
+    response = client.delete(f"/notes/{MAX_INT64 + 1}")
+
+    assert response.status_code == 422
+
+
+def test_delete_note_with_max_int64_id_returns_404(client: TestClient) -> None:
+    response = client.delete(f"/notes/{MAX_INT64}")
+
+    assert response.status_code == 404
+
+
+def test_list_notes_with_skip_beyond_int64_returns_422(client: TestClient) -> None:
+    response = client.get("/notes", params={"skip": MAX_INT64 + 1})
+
+    assert response.status_code == 422
+
+
+def test_list_notes_with_max_int64_skip_returns_empty_list(client: TestClient) -> None:
+    _create_notes(client, "a")
+
+    response = client.get("/notes", params={"skip": MAX_INT64})
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_delete_note_with_id_below_int64_returns_422(client: TestClient) -> None:
+    response = client.delete(f"/notes/{-MAX_INT64 - 2}")
+
+    assert response.status_code == 422
