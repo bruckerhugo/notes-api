@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      # Same .venv layout as locally, so .pre-commit-config.yaml works unchanged.
+      - name: Install
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -e ".[dev]"
+      - name: Commit hooks (compile, ruff, tests)
+        run: .venv/bin/pre-commit run --all-files --show-diff-on-failure
+
+  test-backend:
+    name: test-backend (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -e ".[dev]"
+      - name: Tests with coverage
+        run: >
+          .venv/bin/pytest tests/backend -v
+          --cov --cov-report=term --cov-report=xml --cov-report=html
+          --cov-fail-under=90
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.python-version }}
+          path: |
+            coverage.xml
+            htmlcov/
+
+  # The test-desktop job (PySide6 + pytest-qt, QT_QPA_PLATFORM=offscreen) will be
+  # added with the desktop client, once tests/desktop exists.

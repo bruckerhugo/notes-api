@@ -149,6 +149,15 @@ Lint and formatting use [ruff](https://docs.astral.sh/ruff/), configured in `pyp
 
 Commit only when tests are green. Do not bypass the hooks with `--no-verify`.
 
+## Continuous integration
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request to `main`:
+
+| Job | What it does |
+|---|---|
+| `lint` | Runs the same hooks as locally (`pre-commit run --all-files`): compile check, ruff, tests |
+| `test-backend` | Runs `pytest tests/backend` with coverage on Python 3.12 and 3.13, fails below 90%, and uploads the coverage report (XML + HTML) as an artifact |
+
 ## Project layout
 
 ```
@@ -161,7 +170,7 @@ CLAUDE.md    guidance for Claude Code when working in this repo
 
 1. ✅ Project skeleton + first passing test
 2. ✅ Pre-commit hooks that block commits on syntax errors, lint failures or failing tests
-3. GitHub repository + CI pipeline (GitHub Actions) + branch protection
+3. 🚧 GitHub repository + CI pipeline (GitHub Actions) + branch protection (workflow written, repository not created yet)
 4. ✅ Database layer (SQLAlchemy + SQLite)
 5. ✅ CRUD layer
 6. ✅ `/notes` REST endpoints

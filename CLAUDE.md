@@ -29,7 +29,7 @@ Hooks are defined in `.pre-commit-config.yaml` and are all local, using the `.ve
 ## Workflow rules
 
 - **Strict TDD**: write the failing test first, run it to see it fail, write the minimal code, then refactor. Commit only when tests are green, because the pre-commit hook blocks commits on syntax errors, test collection errors, lint failures or failing tests. Never use `--no-verify`.
-- Planned Git flow: one branch per step, PR to `main`, merge only when CI is green (GitHub Actions: `lint`, `test-backend`, `test-desktop`). The local branch is currently `master` and has no remote yet.
+- Planned Git flow: one branch per step, PR to `main`, merge only when CI is green. The CI workflow is `.github/workflows/ci.yml`, with jobs `lint` (runs the pre-commit hooks) and `test-backend` (Python 3.12/3.13, coverage ≥ 90%). Add a `test-desktop` job with the desktop client. CI recreates `.venv`, so the hooks' `.venv/bin/...` entries work unchanged. The local branch is currently `master` and has no remote yet.
 
 ## Architecture
 
