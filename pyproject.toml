@@ -14,6 +14,8 @@ dev = [
     "pytest",
     "httpx",
     "pytest-cov",
+    "ruff",
+    "pre-commit",
 ]
 
 [tool.setuptools]
@@ -30,3 +32,10 @@ branch = true
 [tool.coverage.report]
 show_missing = true
 skip_covered = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
