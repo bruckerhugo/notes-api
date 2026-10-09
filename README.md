@@ -17,7 +17,7 @@ The project is built step by step with TDD. The REST API is complete: `GET /heal
 ## Setup
 
 ```bash
-git clone <repo-url> notes-api
+git clone https://github.com/bruckerhugo/notes-api.git
 cd notes-api
 python3 -m venv .venv
 .venv/bin/pip install -e ".[dev]"
@@ -170,7 +170,7 @@ CLAUDE.md    guidance for Claude Code when working in this repo
 
 1. ✅ Project skeleton + first passing test
 2. ✅ Pre-commit hooks that block commits on syntax errors, lint failures or failing tests
-3. 🚧 GitHub repository + CI pipeline (GitHub Actions) + branch protection (workflow written, repository not created yet)
+3. 🚧 GitHub repository + CI pipeline (GitHub Actions) + branch protection (branch protection not set up yet)
 4. ✅ Database layer (SQLAlchemy + SQLite)
 5. ✅ CRUD layer
 6. ✅ `/notes` REST endpoints
