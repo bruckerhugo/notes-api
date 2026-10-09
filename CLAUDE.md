@@ -4,34 +4,41 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-REST API for notes (CRUD, FastAPI, SQLite via SQLAlchemy 2.0, Pydantic v2) plus a PySide6 desktop GUI that consumes it. The project is built incrementally; only the skeleton (`GET /health`) exists so far. Add dependencies to `pyproject.toml` only when the step that needs them arrives.
+REST API for notes (CRUD, FastAPI, SQLite via SQLAlchemy 2.0, Pydantic v2) plus a PySide6 desktop GUI that consumes it. The project is built incrementally. Implemented so far: `GET /health` and `POST /notes`. Next: the rest of the CRUD on `/notes`. The desktop GUI does not exist yet.
 
 ## Commands
 
 The venv has no system `python3-venv` package: it was created with `python3 -m venv --without-pip .venv`, then pip was bootstrapped with `python3 -m pip --python .venv/bin/python install pip`. Always use the `.venv/bin/` binaries.
 
 ```bash
-.venv/bin/pip install -e ".[dev]"                     # install (dev extras: pytest, httpx)
-.venv/bin/pytest -v                                   # all tests
+.venv/bin/pip install -e ".[dev]"                     # install (dev extras: pytest, httpx, pytest-cov)
+.venv/bin/pytest -q                                   # all tests
 .venv/bin/pytest tests/backend/test_health.py::test_health_returns_ok   # single test
-.venv/bin/uvicorn backend.main:app --reload           # run API, docs at /docs
+.venv/bin/pytest -k create_note                       # tests matching a name
+.venv/bin/pytest --cov                                # coverage (config in pyproject: source=backend, branch, show_missing)
+.venv/bin/pytest --cov --cov-report=html              # HTML report in htmlcov/
+.venv/bin/uvicorn backend.main:app --reload           # run API (DB: sqlite:///notes.db), docs at /docs
+DATABASE_URL=sqlite:////tmp/notes.db .venv/bin/uvicorn backend.main:app   # run API on another DB
 ```
 
-Planned and not set up yet: `ruff` (lint/format), `pytest-cov` (threshold 90%), and `pre-commit` hooks. Once they exist, Qt tests must run with `QT_QPA_PLATFORM=offscreen`.
+Planned and not set up yet: `ruff` (lint/format), a 90% coverage threshold, and `pre-commit` hooks. Once they exist, Qt tests must run with `QT_QPA_PLATFORM=offscreen`.
 
 ## Workflow rules
 
 - **Strict TDD**: write the failing test first, run it to see it fail, write the minimal code, then refactor. Commit only when tests are green, because the planned pre-commit hook blocks commits on syntax errors, test collection errors, lint failures or failing tests. Never use `--no-verify`.
 - Planned Git flow: one branch per step, PR to `main`, merge only when CI is green (GitHub Actions: `lint`, `test-backend`, `test-desktop`). The local branch is currently `master` and has no remote yet.
 
-## Architecture (target)
+## Architecture
 
-- `backend/` is layered as `routers/` (HTTP only) → `crud.py` (data access, no HTTP) → `models.py` (ORM). `schemas.py` holds the Pydantic I/O models, kept separate from the ORM models. `database.get_db()` is a FastAPI dependency, so tests override it with an in-memory SQLite engine (`StaticPool`).
+`backend/` and the test setup are in place. `desktop/` is still the target design.
+
+
+- `backend/` is layered as `routers/` (HTTP only) → `crud.py` (data access, no HTTP) → `models.py` (ORM). `schemas.py` holds the Pydantic I/O models, kept separate from the ORM models. `database.get_db()` is a FastAPI dependency, so tests override it with an in-memory SQLite engine (`StaticPool`). Tables are created by the app `lifespan` (`Base.metadata.create_all`). There are no migrations yet.
 - `desktop/` uses three layers so the GUI stays testable:
   - `NotesClient` wraps an injected `httpx.Client`. Tests pass the FastAPI `TestClient`, so the client talks to the real API without network. It maps 404, 422 and connection errors to domain exceptions.
   - The `Presenter` holds all UI logic, has no Qt dependency, and is tested with fake client and view objects.
   - The PySide6 view stays thin and is tested with `pytest-qt` (`qtbot`).
-- `tests/` mirrors the packages: `tests/backend/` and `tests/desktop/`.
+- `tests/` mirrors the packages (`tests/backend/`, later `tests/desktop/`). `tests/conftest.py` provides three fixtures: `engine` (in-memory DB, schema created and dropped for each test), `db_session` (to assert directly on DB state) and `client`. `client` is a `TestClient` with `get_db` overridden. It is deliberately not used as a context manager, so the lifespan does not run and no `notes.db` file is created on disk.
 
 ## Rules
 - Always run `pytest -q` before telling a task is done
