@@ -3,8 +3,8 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
-# Espaces de début et de fin retirés avant la vérification de la longueur :
-# un titre fait uniquement d'espaces est donc refusé.
+# Leading/trailing whitespace is stripped before the length check,
+# so a whitespace-only title is rejected.
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 
 

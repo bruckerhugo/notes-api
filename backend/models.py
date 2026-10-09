@@ -11,9 +11,9 @@ def _utcnow() -> datetime:
 
 
 class UTCDateTime(TypeDecorator[datetime]):
-    """Stocke les dates en UTC naïf et les relit en UTC avec fuseau.
+    """Store datetimes as naive UTC and read them back as timezone-aware UTC.
 
-    SQLite ne conserve pas le fuseau horaire, même avec DateTime(timezone=True).
+    SQLite does not keep timezone info, even with DateTime(timezone=True).
     """
 
     impl = DateTime
@@ -32,7 +32,7 @@ class UTCDateTime(TypeDecorator[datetime]):
 
 class Note(Base):
     __tablename__ = "notes"
-    # AUTOINCREMENT : SQLite ne réattribue jamais l'id d'une note supprimée.
+    # AUTOINCREMENT: SQLite never reassigns the id of a deleted note.
     __table_args__ = {"sqlite_autoincrement": True}
 
     id: Mapped[int] = mapped_column(primary_key=True)

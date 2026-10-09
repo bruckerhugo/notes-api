@@ -15,7 +15,7 @@ router = APIRouter(prefix="/notes", tags=["notes"])
 
 DbSession = Annotated[Session, Depends(get_db)]
 
-# SQLite stocke les entiers sur 64 bits signés : au-delà, le pilote lève OverflowError.
+# SQLite stores signed 64-bit integers; beyond that, the driver raises OverflowError.
 MAX_INT64 = 2**63 - 1
 MIN_INT64 = -(2**63)
 
@@ -23,13 +23,14 @@ _CANONICAL_INT = re.compile(r"-?[0-9]+")
 
 
 def _require_canonical_int(value: Any) -> Any:
-    # Pydantic convertit "1.0", "+1", " 1" ou "1_0" en entier : on n'accepte que des chiffres.
+    # Pydantic coerces "1.0", "+1", " 1" or "1_0" to int: only accept plain digits.
     if isinstance(value, str) and not _CANONICAL_INT.fullmatch(value):
         raise ValueError("must be an integer written with digits only")
     return value
 
 
-# Path() doit précéder BeforeValidator, sinon OpenAPI publie ge/le au lieu de minimum/maximum.
+# Path() must come before BeforeValidator, otherwise OpenAPI publishes ge/le
+# instead of minimum/maximum.
 NoteId = Annotated[
     int, Path(ge=MIN_INT64, le=MAX_INT64), BeforeValidator(_require_canonical_int)
 ]

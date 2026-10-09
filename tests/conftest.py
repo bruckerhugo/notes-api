@@ -40,6 +40,6 @@ def client(engine: Engine) -> Iterator[TestClient]:
             yield session
 
     app.dependency_overrides[get_db] = override_get_db
-    # Pas de `with` : on ne déclenche pas le lifespan, qui créerait notes.db sur disque.
+    # No `with`: the lifespan must not run, as it would create notes.db on disk.
     yield TestClient(app)
     app.dependency_overrides.clear()
