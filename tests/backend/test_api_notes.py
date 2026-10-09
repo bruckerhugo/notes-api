@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -237,3 +237,39 @@ def test_openapi_documents_note_id_as_bounded_integer(client: TestClient) -> Non
     assert param["schema"]["type"] == "integer"
     assert param["schema"]["minimum"] == -(2**63)
     assert param["schema"]["maximum"] == MAX_INT64
+
+
+def _assert_utc(value: str) -> datetime:
+    parsed = datetime.fromisoformat(value)
+    assert parsed.utcoffset() == timedelta(0), f"{value!r} is not UTC-aware"
+    return parsed
+
+
+def test_create_note_returns_utc_aware_timestamps(client: TestClient) -> None:
+    before = datetime.now(UTC)
+    body = client.post("/notes", json={"title": "Horodatée"}).json()
+    after = datetime.now(UTC)
+
+    created_at = _assert_utc(body["created_at"])
+    _assert_utc(body["updated_at"])
+    assert before <= created_at <= after
+
+
+def test_list_notes_returns_utc_aware_timestamps(client: TestClient) -> None:
+    _create_notes(client, "Horodatée")
+
+    [note] = client.get("/notes").json()
+
+    _assert_utc(note["created_at"])
+    _assert_utc(note["updated_at"])
+
+
+def test_note_timestamps_read_from_database_are_utc_aware(
+    client: TestClient, db_session: Session
+) -> None:
+    _create_notes(client, "Horodatée")
+
+    note = db_session.scalars(select(Note)).one()
+
+    assert note.created_at.utcoffset() == timedelta(0)
+    assert note.updated_at.utcoffset() == timedelta(0)
