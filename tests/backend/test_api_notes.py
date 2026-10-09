@@ -1,5 +1,7 @@
 from datetime import datetime
 
+import pytest
+
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -183,3 +185,25 @@ def test_ids_are_not_reused_after_deleting_the_last_note(client: TestClient) -> 
     [new_id] = _create_notes(client, "C")
 
     assert new_id > last_id
+
+
+@pytest.mark.parametrize("blank_title", ["   ", "\t\n", " \u00a0 "])
+def test_create_note_rejects_blank_title(client: TestClient, blank_title: str) -> None:
+    response = client.post("/notes", json={"title": blank_title})
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "title"]
+
+
+def test_create_note_strips_surrounding_whitespace_from_title(client: TestClient) -> None:
+    response = client.post("/notes", json={"title": "  Courses \n"})
+
+    assert response.status_code == 201
+    assert response.json()["title"] == "Courses"
+
+
+def test_create_note_title_length_is_checked_after_stripping(client: TestClient) -> None:
+    response = client.post("/notes", json={"title": " " + "x" * 200 + " "})
+
+    assert response.status_code == 201
+    assert response.json()["title"] == "x" * 200

@@ -72,7 +72,7 @@ curl 'http://localhost:8000/notes?skip=0&limit=10'
 curl -X DELETE http://localhost:8000/notes/1    # 204, empty body
 ```
 
-`title` is required (1–200 characters). `content` is optional and defaults to `""`.
+`title` is required. Leading and trailing whitespace is removed, then the title must be 1–200 characters long, so a whitespace-only title is rejected. `content` is optional and defaults to `""`.
 
 ## Tests
 
