@@ -1,7 +1,9 @@
+import re
 from collections.abc import Sequence
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
+from pydantic import BeforeValidator
 from sqlalchemy.orm import Session
 
 from backend import crud
@@ -16,7 +18,20 @@ DbSession = Annotated[Session, Depends(get_db)]
 # SQLite stocke les entiers sur 64 bits signés : au-delà, le pilote lève OverflowError.
 MAX_INT64 = 2**63 - 1
 MIN_INT64 = -(2**63)
-NoteId = Annotated[int, Path(ge=MIN_INT64, le=MAX_INT64)]
+
+_CANONICAL_INT = re.compile(r"-?[0-9]+")
+
+
+def _require_canonical_int(value: Any) -> Any:
+    # Pydantic convertit "1.0", "+1", " 1" ou "1_0" en entier : on n'accepte que des chiffres.
+    if isinstance(value, str) and not _CANONICAL_INT.fullmatch(value):
+        raise ValueError("must be an integer written with digits only")
+    return value
+
+
+NoteId = Annotated[
+    int, BeforeValidator(_require_canonical_int), Path(ge=MIN_INT64, le=MAX_INT64)
+]
 
 
 @router.post("", response_model=NoteRead, status_code=status.HTTP_201_CREATED)

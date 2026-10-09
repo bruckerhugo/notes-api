@@ -207,3 +207,24 @@ def test_create_note_title_length_is_checked_after_stripping(client: TestClient)
 
     assert response.status_code == 201
     assert response.json()["title"] == "x" * 200
+
+
+@pytest.mark.parametrize("bad_id", ["1.0", "1.5", "1e0", "+1", " 1", "0x1", "1_0"])
+def test_delete_note_rejects_non_canonical_integer_id(
+    client: TestClient, db_session: Session, bad_id: str
+) -> None:
+    _create_notes(client, *[f"note {i}" for i in range(10)])
+
+    response = client.delete(f"/notes/{bad_id}")
+
+    assert response.status_code == 422
+    assert len(db_session.scalars(select(Note)).all()) == 10
+
+
+@pytest.mark.parametrize("note_id", ["0", "-1"])
+def test_delete_note_accepts_zero_and_negative_ids_as_not_found(
+    client: TestClient, note_id: str
+) -> None:
+    response = client.delete(f"/notes/{note_id}")
+
+    assert response.status_code == 404
