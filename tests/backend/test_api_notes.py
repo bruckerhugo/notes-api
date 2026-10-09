@@ -95,3 +95,46 @@ def test_list_notes_rejects_negative_skip(client: TestClient) -> None:
 def test_list_notes_rejects_limit_out_of_range(client: TestClient) -> None:
     assert client.get("/notes", params={"limit": 0}).status_code == 422
     assert client.get("/notes", params={"limit": 101}).status_code == 422
+
+
+def test_delete_note_returns_204_with_empty_body(client: TestClient) -> None:
+    [note_id] = _create_notes(client, "À supprimer")
+
+    response = client.delete(f"/notes/{note_id}")
+
+    assert response.status_code == 204
+    assert response.content == b""
+
+
+def test_delete_note_removes_only_that_note(
+    client: TestClient, db_session: Session
+) -> None:
+    keep_1, removed, keep_2 = _create_notes(client, "Garder 1", "Supprimer", "Garder 2")
+
+    client.delete(f"/notes/{removed}")
+
+    remaining = db_session.scalars(select(Note.id).order_by(Note.id)).all()
+    assert remaining == [keep_1, keep_2]
+
+
+def test_delete_note_returns_404_when_note_does_not_exist(client: TestClient) -> None:
+    response = client.delete("/notes/999")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Note not found"}
+
+
+def test_delete_note_twice_returns_404_the_second_time(client: TestClient) -> None:
+    [note_id] = _create_notes(client, "Une seule fois")
+
+    first = client.delete(f"/notes/{note_id}")
+    second = client.delete(f"/notes/{note_id}")
+
+    assert first.status_code == 204
+    assert second.status_code == 404
+
+
+def test_delete_note_rejects_non_integer_id(client: TestClient) -> None:
+    response = client.delete("/notes/abc")
+
+    assert response.status_code == 422

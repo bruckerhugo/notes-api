@@ -7,7 +7,7 @@ The goal is a notes application made of:
 - a **REST API** (FastAPI + SQLite) exposing CRUD operations on notes,
 - a **desktop GUI** (PySide6) that consumes the API.
 
-The project is built step by step with TDD. Right now the API exposes `GET /health`, `POST /notes` and `GET /notes`. The desktop GUI does not exist yet.
+The project is built step by step with TDD. Right now the API exposes `GET /health`, `POST /notes`, `GET /notes` and `DELETE /notes/{id}`. The desktop GUI does not exist yet.
 
 ## Requirements
 
@@ -56,6 +56,7 @@ DATABASE_URL=sqlite:////tmp/notes.db .venv/bin/uvicorn backend.main:app --reload
 | GET    | `/health`| Health check      | `200`                                      |
 | POST   | `/notes` | Create a note     | `201` created note, `422` invalid payload  |
 | GET    | `/notes` | List notes (ordered by id), paginated with `skip` (≥ 0, default 0) and `limit` (1–100, default 100) | `200` list of notes, `422` invalid params |
+| DELETE | `/notes/{id}` | Delete a note | `204` no content, `404` note not found, `422` non-integer id |
 
 Example:
 
@@ -67,6 +68,8 @@ curl -X POST http://localhost:8000/notes \
 
 curl 'http://localhost:8000/notes?skip=0&limit=10'
 # [{"id":1,"title":"Groceries",...}]
+
+curl -X DELETE http://localhost:8000/notes/1    # 204, empty body
 ```
 
 `title` is required (1–200 characters). `content` is optional and defaults to `""`.
@@ -131,8 +134,8 @@ CLAUDE.md    guidance for Claude Code when working in this repo
 2. Pre-commit hooks that block commits on syntax errors, lint failures or failing tests
 3. GitHub repository + CI pipeline (GitHub Actions) + branch protection
 4. ✅ Database layer (SQLAlchemy + SQLite)
-5. 🚧 CRUD layer (create, list done)
-6. 🚧 `/notes` REST endpoints (`POST /notes`, `GET /notes` done)
+5. 🚧 CRUD layer (create, list, delete done)
+6. 🚧 `/notes` REST endpoints (`POST /notes`, `GET /notes`, `DELETE /notes/{id}` done)
 7. Desktop HTTP client
 8. GUI presenter (UI logic, Qt-free)
 9. PySide6 main window

@@ -17,3 +17,12 @@ def create_note(db: Session, data: NoteCreate) -> Note:
 
 def list_notes(db: Session, skip: int = 0, limit: int = 100) -> Sequence[Note]:
     return db.scalars(select(Note).order_by(Note.id).offset(skip).limit(limit)).all()
+
+
+def delete_note(db: Session, note_id: int) -> bool:
+    note = db.get(Note, note_id)
+    if note is None:
+        return False
+    db.delete(note)
+    db.commit()
+    return True
