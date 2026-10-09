@@ -174,3 +174,12 @@ def test_delete_note_with_id_below_int64_returns_422(client: TestClient) -> None
     response = client.delete(f"/notes/{-MAX_INT64 - 2}")
 
     assert response.status_code == 422
+
+
+def test_ids_are_not_reused_after_deleting_the_last_note(client: TestClient) -> None:
+    _, last_id = _create_notes(client, "A", "B")
+    client.delete(f"/notes/{last_id}")
+
+    [new_id] = _create_notes(client, "C")
+
+    assert new_id > last_id

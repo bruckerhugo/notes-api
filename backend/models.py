@@ -12,6 +12,8 @@ def _utcnow() -> datetime:
 
 class Note(Base):
     __tablename__ = "notes"
+    # AUTOINCREMENT : SQLite ne réattribue jamais l'id d'une note supprimée.
+    __table_args__ = {"sqlite_autoincrement": True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(200))
