@@ -13,6 +13,7 @@ dependencies = [
 dev = [
     "pytest",
     "httpx",
+    "pytest-cov",
 ]
 
 [tool.setuptools]
@@ -21,3 +22,11 @@ packages = ["backend"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+
+[tool.coverage.run]
+source = ["backend"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
