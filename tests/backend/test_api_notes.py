@@ -228,3 +228,12 @@ def test_delete_note_accepts_zero_and_negative_ids_as_not_found(
     response = client.delete(f"/notes/{note_id}")
 
     assert response.status_code == 404
+
+
+def test_openapi_documents_note_id_as_bounded_integer(client: TestClient) -> None:
+    paths = client.get("/openapi.json").json()["paths"]
+
+    [param] = paths["/notes/{note_id}"]["delete"]["parameters"]
+    assert param["schema"]["type"] == "integer"
+    assert param["schema"]["minimum"] == -(2**63)
+    assert param["schema"]["maximum"] == MAX_INT64

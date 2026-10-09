@@ -29,8 +29,9 @@ def _require_canonical_int(value: Any) -> Any:
     return value
 
 
+# Path() doit précéder BeforeValidator, sinon OpenAPI publie ge/le au lieu de minimum/maximum.
 NoteId = Annotated[
-    int, BeforeValidator(_require_canonical_int), Path(ge=MIN_INT64, le=MAX_INT64)
+    int, Path(ge=MIN_INT64, le=MAX_INT64), BeforeValidator(_require_canonical_int)
 ]
 
 
