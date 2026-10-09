@@ -31,9 +31,7 @@ def _require_canonical_int(value: Any) -> Any:
 
 # Path() must come before BeforeValidator, otherwise OpenAPI publishes ge/le
 # instead of minimum/maximum.
-NoteId = Annotated[
-    int, Path(ge=MIN_INT64, le=MAX_INT64), BeforeValidator(_require_canonical_int)
-]
+NoteId = Annotated[int, Path(ge=MIN_INT64, le=MAX_INT64), BeforeValidator(_require_canonical_int)]
 
 
 @router.post("", response_model=NoteRead, status_code=status.HTTP_201_CREATED)

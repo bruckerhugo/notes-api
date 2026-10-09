@@ -1,7 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
-
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -28,9 +27,7 @@ def test_create_note_content_defaults_to_empty_string(client: TestClient) -> Non
     assert response.json()["content"] == ""
 
 
-def test_create_note_persists_it_in_database(
-    client: TestClient, db_session: Session
-) -> None:
+def test_create_note_persists_it_in_database(client: TestClient, db_session: Session) -> None:
     response = client.post("/notes", json={"title": "Persistée"})
 
     note = db_session.scalars(select(Note)).one()
@@ -108,9 +105,7 @@ def test_delete_note_returns_204_with_empty_body(client: TestClient) -> None:
     assert response.content == b""
 
 
-def test_delete_note_removes_only_that_note(
-    client: TestClient, db_session: Session
-) -> None:
+def test_delete_note_removes_only_that_note(client: TestClient, db_session: Session) -> None:
     keep_1, removed, keep_2 = _create_notes(client, "Garder 1", "Supprimer", "Garder 2")
 
     client.delete(f"/notes/{removed}")
