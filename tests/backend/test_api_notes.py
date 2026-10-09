@@ -313,3 +313,121 @@ def test_get_note_rejects_invalid_id(client: TestClient, bad_id: str) -> None:
     response = client.get(f"/notes/{bad_id}")
 
     assert response.status_code == 422
+
+
+def _create_note(client: TestClient, title: str = "Original", content: str = "Body") -> dict:
+    response = client.post("/notes", json={"title": title, "content": content})
+    assert response.status_code == 201
+    return response.json()
+
+
+def test_patch_note_updates_title_only(client: TestClient) -> None:
+    note = _create_note(client)
+
+    response = client.patch(f"/notes/{note['id']}", json={"title": "Renamed"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["title"] == "Renamed"
+    assert body["content"] == "Body"
+
+
+def test_patch_note_updates_content_only(client: TestClient) -> None:
+    note = _create_note(client)
+
+    response = client.patch(f"/notes/{note['id']}", json={"content": "New body"})
+
+    assert response.status_code == 200
+    assert response.json()["title"] == "Original"
+    assert response.json()["content"] == "New body"
+
+
+def test_patch_note_can_clear_content(client: TestClient) -> None:
+    note = _create_note(client)
+
+    response = client.patch(f"/notes/{note['id']}", json={"content": ""})
+
+    assert response.status_code == 200
+    assert response.json()["content"] == ""
+
+
+def test_patch_note_persists_the_change(client: TestClient) -> None:
+    note = _create_note(client)
+
+    client.patch(f"/notes/{note['id']}", json={"title": "Persisted"})
+
+    assert client.get(f"/notes/{note['id']}").json()["title"] == "Persisted"
+
+
+def test_patch_note_bumps_updated_at_but_not_created_at(client: TestClient) -> None:
+    note = _create_note(client)
+
+    body = client.patch(f"/notes/{note['id']}", json={"title": "Later"}).json()
+
+    assert body["created_at"] == note["created_at"]
+    assert _assert_utc(body["updated_at"]) > _assert_utc(note["updated_at"])
+
+
+def test_patch_note_with_empty_body_changes_nothing(client: TestClient) -> None:
+    note = _create_note(client)
+
+    response = client.patch(f"/notes/{note['id']}", json={})
+
+    assert response.status_code == 200
+    assert response.json() == note
+
+
+def test_patch_note_strips_title_whitespace(client: TestClient) -> None:
+    note = _create_note(client)
+
+    response = client.patch(f"/notes/{note['id']}", json={"title": "  Trimmed  "})
+
+    assert response.json()["title"] == "Trimmed"
+
+
+def test_patch_note_ignores_read_only_fields(client: TestClient) -> None:
+    note = _create_note(client)
+
+    body = client.patch(
+        f"/notes/{note['id']}",
+        json={"id": 999, "created_at": "2000-01-01T00:00:00Z", "title": "Renamed"},
+    ).json()
+
+    assert body["id"] == note["id"]
+    assert body["created_at"] == note["created_at"]
+
+
+@pytest.mark.parametrize(
+    ("payload", "field"),
+    [
+        ({"title": ""}, "title"),
+        ({"title": "   "}, "title"),
+        ({"title": "x" * 201}, "title"),
+        ({"title": None}, "title"),
+        ({"content": None}, "content"),
+    ],
+)
+def test_patch_note_rejects_invalid_payload(client: TestClient, payload: dict, field: str) -> None:
+    note = _create_note(client)
+
+    response = client.patch(f"/notes/{note['id']}", json=payload)
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", field]
+    assert client.get(f"/notes/{note['id']}").json() == note
+
+
+def test_patch_note_returns_404_when_note_does_not_exist(client: TestClient) -> None:
+    _create_note(client)
+
+    response = client.patch("/notes/999", json={"title": "Nope"})
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Note not found"}
+
+
+@pytest.mark.parametrize("bad_id", ["abc", "1.0", str(MAX_INT64 + 1)])
+def test_patch_note_rejects_invalid_id(client: TestClient, bad_id: str) -> None:
+    response = client.patch(f"/notes/{bad_id}", json={"title": "Nope"})
+
+    assert response.status_code == 422

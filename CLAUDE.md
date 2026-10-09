@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-REST API for notes (CRUD, FastAPI, SQLite via SQLAlchemy 2.0, Pydantic v2) plus a PySide6 desktop GUI that consumes it. The project is built incrementally. Implemented so far: `GET /health`, `POST /notes`, `GET /notes` (with `skip`/`limit` pagination, ordered by id), `GET /notes/{id}`, and `DELETE /notes/{id}` (204). Unknown ids return 404 `{"detail": "Note not found"}` via the router helper `_get_note_or_404`. Note ids must be canonical integers in the int64 range (`NoteId`), otherwise 422. Next: `PATCH /notes/{id}`. The desktop GUI does not exist yet.
+REST API for notes (CRUD, FastAPI, SQLite via SQLAlchemy 2.0, Pydantic v2) plus a PySide6 desktop GUI that consumes it. The project is built incrementally. The REST API is complete: `GET /health`, `POST /notes`, `GET /notes` (with `skip`/`limit` pagination, ordered by id), `GET /notes/{id}`, `PATCH /notes/{id}` and `DELETE /notes/{id}` (204). `PATCH` is a partial update: it applies `NoteUpdate.model_dump(exclude_unset=True)`, and an explicit `null` returns 422. Unknown ids return 404 `{"detail": "Note not found"}` via the router helper `_get_note_or_404`. Note ids must be canonical integers in the int64 range (`NoteId`), otherwise 422. Next: GitHub CI (plan step 3), then the desktop client. The desktop GUI does not exist yet.
 
 ## Commands
 

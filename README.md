@@ -7,7 +7,7 @@ The goal is a notes application made of:
 - a **REST API** (FastAPI + SQLite) exposing CRUD operations on notes,
 - a **desktop GUI** (PySide6) that consumes the API.
 
-The project is built step by step with TDD. Right now the API exposes `GET /health`, `POST /notes`, `GET /notes`, `GET /notes/{id}` and `DELETE /notes/{id}`. The desktop GUI does not exist yet.
+The project is built step by step with TDD. The REST API is complete: `GET /health` plus full CRUD on `/notes`. The desktop GUI does not exist yet.
 
 ## Requirements
 
@@ -58,6 +58,7 @@ DATABASE_URL=sqlite:////tmp/notes.db .venv/bin/uvicorn backend.main:app --reload
 | POST   | `/notes` | Create a note     | `201` created note, `422` invalid payload  |
 | GET    | `/notes` | List notes (ordered by id), paginated with `skip` (0 to 2⁶³−1, default 0) and `limit` (1–100, default 100) | `200` list of notes, `422` invalid params |
 | GET    | `/notes/{id}` | Get one note | `200` note, `404` note not found, `422` invalid id |
+| PATCH  | `/notes/{id}` | Partially update a note: only the fields sent change | `200` updated note, `404` note not found, `422` invalid id or payload |
 | DELETE | `/notes/{id}` | Delete a note | `204` no content, `404` note not found, `422` invalid id (not an integer, or outside the 64-bit range) |
 
 Example:
@@ -72,10 +73,15 @@ curl 'http://localhost:8000/notes?skip=0&limit=10'
 # [{"id":1,"title":"Groceries",...}]
 
 curl http://localhost:8000/notes/1              # 200, the note
+
+curl -X PATCH http://localhost:8000/notes/1 \
+     -H 'Content-Type: application/json' \
+     -d '{"content": "Milk, bread, eggs"}'      # 200, title unchanged
+
 curl -X DELETE http://localhost:8000/notes/1    # 204, empty body
 ```
 
-`title` is required. Leading and trailing whitespace is removed, then the title must be 1–200 characters long, so a whitespace-only title is rejected. `content` is optional and defaults to `""`.
+`title` is required. Leading and trailing whitespace is removed, then the title must be 1–200 characters long, so a whitespace-only title is rejected. `content` is optional and defaults to `""`. For `PATCH`, both fields are optional, but sending `null` is rejected (422). `updated_at` changes on each update.
 
 ## Tests
 
@@ -157,8 +163,8 @@ CLAUDE.md    guidance for Claude Code when working in this repo
 2. ✅ Pre-commit hooks that block commits on syntax errors, lint failures or failing tests
 3. GitHub repository + CI pipeline (GitHub Actions) + branch protection
 4. ✅ Database layer (SQLAlchemy + SQLite)
-5. 🚧 CRUD layer (create, list, get, delete done)
-6. 🚧 `/notes` REST endpoints (`POST /notes`, `GET /notes`, `GET /notes/{id}`, `DELETE /notes/{id}` done)
+5. ✅ CRUD layer
+6. ✅ `/notes` REST endpoints
 7. Desktop HTTP client
 8. GUI presenter (UI logic, Qt-free)
 9. PySide6 main window

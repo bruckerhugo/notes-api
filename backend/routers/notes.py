@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from backend import crud
 from backend.database import get_db
 from backend.models import Note
-from backend.schemas import NoteCreate, NoteRead
+from backend.schemas import NoteCreate, NoteRead, NoteUpdate
 
 router = APIRouter(prefix="/notes", tags=["notes"])
 
@@ -58,6 +58,11 @@ def _get_note_or_404(db: Session, note_id: int) -> Note:
 @router.get("/{note_id}", response_model=NoteRead)
 def get_note(note_id: NoteId, db: DbSession) -> Note:
     return _get_note_or_404(db, note_id)
+
+
+@router.patch("/{note_id}", response_model=NoteRead)
+def update_note(note_id: NoteId, data: NoteUpdate, db: DbSession) -> Note:
+    return crud.update_note(db, _get_note_or_404(db, note_id), data)
 
 
 @router.delete("/{note_id}", status_code=status.HTTP_204_NO_CONTENT)
