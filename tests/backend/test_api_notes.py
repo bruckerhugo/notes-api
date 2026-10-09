@@ -52,3 +52,46 @@ def test_create_note_rejects_title_longer_than_200_chars(client: TestClient) -> 
     response = client.post("/notes", json={"title": "x" * 201})
 
     assert response.status_code == 422
+
+
+def _create_notes(client: TestClient, *titles: str) -> list[int]:
+    return [client.post("/notes", json={"title": t}).json()["id"] for t in titles]
+
+
+def test_list_notes_returns_empty_list_when_no_notes(client: TestClient) -> None:
+    response = client.get("/notes")
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_list_notes_returns_all_notes_ordered_by_id(client: TestClient) -> None:
+    ids = _create_notes(client, "Première", "Deuxième", "Troisième")
+
+    response = client.get("/notes")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [note["id"] for note in body] == ids
+    assert [note["title"] for note in body] == ["Première", "Deuxième", "Troisième"]
+    assert set(body[0]) == {"id", "title", "content", "created_at", "updated_at"}
+
+
+def test_list_notes_supports_skip_and_limit(client: TestClient) -> None:
+    ids = _create_notes(client, "a", "b", "c", "d", "e")
+
+    response = client.get("/notes", params={"skip": 1, "limit": 2})
+
+    assert response.status_code == 200
+    assert [note["id"] for note in response.json()] == ids[1:3]
+
+
+def test_list_notes_rejects_negative_skip(client: TestClient) -> None:
+    response = client.get("/notes", params={"skip": -1})
+
+    assert response.status_code == 422
+
+
+def test_list_notes_rejects_limit_out_of_range(client: TestClient) -> None:
+    assert client.get("/notes", params={"limit": 0}).status_code == 422
+    assert client.get("/notes", params={"limit": 101}).status_code == 422

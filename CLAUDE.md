@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-REST API for notes (CRUD, FastAPI, SQLite via SQLAlchemy 2.0, Pydantic v2) plus a PySide6 desktop GUI that consumes it. The project is built incrementally. Implemented so far: `GET /health` and `POST /notes`. Next: the rest of the CRUD on `/notes`. The desktop GUI does not exist yet.
+REST API for notes (CRUD, FastAPI, SQLite via SQLAlchemy 2.0, Pydantic v2) plus a PySide6 desktop GUI that consumes it. The project is built incrementally. Implemented so far: `GET /health`, `POST /notes`, and `GET /notes` (with `skip`/`limit` pagination, ordered by id). Next: `GET`/`PATCH`/`DELETE /notes/{id}`. The desktop GUI does not exist yet.
 
 ## Commands
 
