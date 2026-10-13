@@ -50,16 +50,46 @@ jobs:
       - name: Tests with coverage
         run: >
           .venv/bin/pytest tests/backend -v
-          --cov --cov-report=term --cov-report=xml --cov-report=html
+          --cov=backend --cov-report=term --cov-report=xml --cov-report=html
           --cov-fail-under=90
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-${{ matrix.python-version }}
+          name: coverage-backend-${{ matrix.python-version }}
           path: |
             coverage.xml
             htmlcov/
 
-  # The test-desktop job (PySide6 + pytest-qt, QT_QPA_PLATFORM=offscreen) will be
-  # added with the desktop client, once tests/desktop exists.
+  test-desktop:
+    name: test-desktop
+    runs-on: ubuntu-latest
+    # Qt system libraries (libegl1, libxkbcommon-x11-0, libxcb-cursor0...) will be
+    # installed here once the PySide6 GUI exists.
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -e ".[dev]"
+      # The desktop tests drive the real API through TestClient, so they need the backend.
+      - name: Tests with coverage
+        run: >
+          .venv/bin/pytest tests/desktop -v
+          --cov=desktop --cov-report=term --cov-report=xml --cov-report=html
+          --cov-fail-under=90
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-desktop
+          path: |
+            coverage.xml
+            htmlcov/
