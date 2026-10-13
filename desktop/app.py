@@ -1,9 +1,12 @@
 """Wire the API client, presenter and Qt window together."""
 
 import argparse
+import faulthandler
 import os
 import sys
+from collections.abc import Callable
 from pathlib import Path
+from typing import TextIO
 
 import httpx
 from PySide6.QtCore import QCoreApplication, QStandardPaths
@@ -15,6 +18,8 @@ from desktop.presenter import NotesApi, NotesPresenter
 from desktop.views.main_window import MainWindow
 
 APP_NAME = "notes-api"
+# A smoke test still running after this many seconds is considered hung.
+SMOKE_TIMEOUT = 60.0
 
 
 def api_base_url() -> str | None:
@@ -57,6 +62,33 @@ def main(argv: list[str] | None = None) -> int:
             with args.smoke_log.open("a", encoding="utf-8") as log:
                 log.write(message + "\n")
 
+    if not args.smoke_test:
+        return _run(smoke_test=False, report=report)
+
+    report("Smoke test started")
+    # Watchdog: if the smoke test hangs (e.g. on a native dialog), dump every thread's
+    # stack to the log and exit, instead of blocking the build forever.
+    log_file = args.smoke_log.open("a", encoding="utf-8") if args.smoke_log else None
+    armed = _arm_watchdog(log_file or sys.stderr)
+    try:
+        return _run(smoke_test=True, report=report)
+    finally:
+        if armed:
+            faulthandler.cancel_dump_traceback_later()
+        if log_file is not None:
+            log_file.close()
+
+
+def _arm_watchdog(file: TextIO | None) -> bool:
+    """faulthandler needs a real file descriptor (sys.stderr may be None or captured)."""
+    try:
+        faulthandler.dump_traceback_later(SMOKE_TIMEOUT, exit=True, file=file)
+    except (AttributeError, ValueError, OSError):
+        return False
+    return True
+
+
+def _run(*, smoke_test: bool, report: Callable[[str], None]) -> int:
     # Reuse an existing QApplication (Qt allows only one per process, e.g. under pytest-qt).
     app = QApplication.instance() or QApplication(sys.argv)
     QCoreApplication.setApplicationName(APP_NAME)
@@ -68,7 +100,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             server.start()
         except RuntimeError as exc:
-            if not args.smoke_test:
+            if not smoke_test:
                 raise
             report(f"Smoke test FAILED: {exc}")
             return 1
@@ -77,7 +109,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         with httpx.Client(base_url=base_url, timeout=5.0) as http:
             client = NotesClient(http)
-            if args.smoke_test:
+            if smoke_test:
                 # Check the API before opening the window: on failure the window would
                 # show a modal error dialog, which blocks forever in a headless run.
                 try:
@@ -87,7 +119,7 @@ def main(argv: list[str] | None = None) -> int:
                     return 1
             window = create_window(client)
             window.show()
-            if args.smoke_test:
+            if smoke_test:
                 report(f"Smoke test OK: {base_url} answered with {count} note(s)")
                 return 0
             return app.exec()

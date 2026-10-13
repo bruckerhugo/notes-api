@@ -235,3 +235,35 @@ def test_embedded_server_failure_is_raised_outside_smoke_test(
 
     with pytest.raises(RuntimeError, match="failed to start"):
         desktop.app.main([])
+
+
+def test_smoke_test_arms_a_watchdog_that_dumps_stacks_and_exits(
+    harness: MainHarness, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.delenv("NOTES_API_URL", raising=False)
+    calls: list[tuple[str, object]] = []
+    monkeypatch.setattr(
+        "faulthandler.dump_traceback_later",
+        lambda timeout, exit, file: calls.append(("arm", (timeout, exit, file.name))),
+    )
+    monkeypatch.setattr(
+        "faulthandler.cancel_dump_traceback_later", lambda: calls.append(("cancel", None))
+    )
+    log = tmp_path / "smoke.log"
+
+    assert desktop.app.main(["--smoke-test", "--smoke-log", str(log)]) == 0
+
+    assert calls == [("arm", (desktop.app.SMOKE_TIMEOUT, True, str(log))), ("cancel", None)]
+    assert log.read_text().startswith("Smoke test started")
+
+
+def test_no_watchdog_outside_smoke_test(
+    harness: MainHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("NOTES_API_URL", raising=False)
+    armed: list[float] = []
+    monkeypatch.setattr("faulthandler.dump_traceback_later", lambda *a, **k: armed.append(1))
+
+    desktop.app.main([])
+
+    assert armed == []
