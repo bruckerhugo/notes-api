@@ -2,10 +2,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import pytest
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 from pytestqt.qtbot import QtBot
 
 import desktop.app
+from desktop.api_client import ApiUnavailable
 from desktop.app import api_base_url, create_window, default_database_path
 from desktop.views.main_window import MainWindow
 from tests.desktop.fakes import FakeNotesClient
@@ -61,9 +62,12 @@ class FakeServer:
     database_path: Path
     events: list[str] = field(default_factory=list)
     base_url: str = "http://127.0.0.1:5555"
+    fail: bool = False
 
     def start(self) -> None:
         self.events.append("start")
+        if self.fail:
+            raise RuntimeError("Embedded server failed to start")
 
     def stop(self) -> None:
         self.events.append("stop")
@@ -72,6 +76,9 @@ class FakeServer:
 @dataclass
 class MainHarness:
     servers: list[FakeServer] = field(default_factory=list)
+    server_fails: bool = False
+    api_error: Exception | None = None
+    dialogs: list[str] = field(default_factory=list)
     base_urls: list[str] = field(default_factory=list)
     shown: list[str] = field(default_factory=list)
     exec_calls: int = 0
@@ -83,13 +90,14 @@ def harness(qtbot: QtBot, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Ma
     harness = MainHarness()
 
     def fake_server(database_path: Path) -> FakeServer:
-        server = FakeServer(database_path)
+        server = FakeServer(database_path, fail=harness.server_fails)
         harness.servers.append(server)
         return server
 
     class FakeClient(FakeNotesClient):
         def __init__(self, http: object) -> None:
             super().__init__("from the API")
+            self.fail_with = harness.api_error  # type: ignore[assignment]
             harness.base_urls.append(str(http.base_url).rstrip("/"))  # type: ignore[attr-defined]
 
     def fake_exec() -> int:
@@ -113,6 +121,8 @@ def harness(qtbot: QtBot, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Ma
     monkeypatch.setattr(desktop.app, "create_window", tracked_create_window)
     monkeypatch.setattr(desktop.app, "default_database_path", lambda: tmp_path / "notes.db")
     monkeypatch.setattr(QApplication, "exec", staticmethod(fake_exec))
+    # A modal dialog would block a headless smoke test forever: record them instead.
+    monkeypatch.setattr(QMessageBox, "warning", lambda *args: harness.dialogs.append(args[2]))
     return harness
 
 
@@ -177,3 +187,51 @@ def test_smoke_test_works_without_stdout(
     monkeypatch.setattr("sys.stdout", None)
 
     assert desktop.app.main(["--smoke-test"]) == 0
+
+
+def test_smoke_test_writes_its_result_to_the_log_file(
+    harness: MainHarness, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.delenv("NOTES_API_URL", raising=False)
+    log = tmp_path / "smoke.log"
+
+    assert desktop.app.main(["--smoke-test", "--smoke-log", str(log)]) == 0
+
+    assert "Smoke test OK" in log.read_text()
+
+
+def test_smoke_test_fails_without_dialog_when_the_api_does_not_answer(
+    harness: MainHarness, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.delenv("NOTES_API_URL", raising=False)
+    harness.api_error = ApiUnavailable("Notes API unavailable: connection refused")
+    log = tmp_path / "smoke.log"
+
+    assert desktop.app.main(["--smoke-test", "--smoke-log", str(log)]) == 1
+
+    assert harness.dialogs == []
+    assert harness.exec_calls == 0
+    assert "Smoke test FAILED: Notes API unavailable" in log.read_text()
+    assert harness.servers[0].events == ["start", "stop"]
+
+
+def test_smoke_test_fails_cleanly_when_the_embedded_server_does_not_start(
+    harness: MainHarness, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.delenv("NOTES_API_URL", raising=False)
+    harness.server_fails = True
+    log = tmp_path / "smoke.log"
+
+    assert desktop.app.main(["--smoke-test", "--smoke-log", str(log)]) == 1
+
+    assert "Smoke test FAILED: Embedded server failed to start" in log.read_text()
+
+
+def test_embedded_server_failure_is_raised_outside_smoke_test(
+    harness: MainHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("NOTES_API_URL", raising=False)
+    harness.server_fails = True
+
+    with pytest.raises(RuntimeError, match="failed to start"):
+        desktop.app.main([])
