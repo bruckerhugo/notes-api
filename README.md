@@ -1,6 +1,6 @@
 # notes-api
 
-> **This is a test project.** It is a sandbox for building an application by *vibe coding* with [Claude Code](https://claude.com/claude-code) and for exploring Claude's features (plan mode, TDD workflow, memory, `CLAUDE.md`, hooks, CI integration…). It is not intended for production use.
+> **This is a test project.** It is a project for building an application by *vibe coding* with [Claude Code](https://claude.com/claude-code) and for exploring Claude's features (plan mode, TDD workflow, memory, `CLAUDE.md`, hooks, CI integration…). It is not intended for production use.
 
 The goal is a notes application made of:
 
