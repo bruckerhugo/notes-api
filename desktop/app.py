@@ -4,6 +4,7 @@ import argparse
 import faulthandler
 import os
 import sys
+import traceback
 from collections.abc import Callable
 from pathlib import Path
 from typing import TextIO
@@ -75,6 +76,11 @@ def main(argv: list[str] | None = None) -> int:
         faulthandler.enable(file=log_file or sys.stderr)
     try:
         return _run(smoke_test=True, report=report)
+    except Exception:
+        # Never let an exception escape a smoke test: in a windowed build it would open
+        # a modal "Unhandled exception" dialog and block the run forever.
+        report("Smoke test FAILED: unexpected error\n" + traceback.format_exc())
+        return 1
     finally:
         if armed:
             faulthandler.cancel_dump_traceback_later()

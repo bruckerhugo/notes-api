@@ -267,3 +267,23 @@ def test_no_watchdog_outside_smoke_test(
     desktop.app.main([])
 
     assert armed == []
+
+
+def test_smoke_test_reports_unexpected_errors_instead_of_raising(
+    harness: MainHarness, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # An exception escaping a windowed build opens a modal "Unhandled exception" dialog.
+    monkeypatch.delenv("NOTES_API_URL", raising=False)
+
+    def broken_window(api: object) -> MainWindow:
+        raise ValueError("unexpected")
+
+    monkeypatch.setattr(desktop.app, "create_window", broken_window)
+    log = tmp_path / "smoke.log"
+
+    assert desktop.app.main(["--smoke-test", "--smoke-log", str(log)]) == 1
+
+    text = log.read_text()
+    assert "Smoke test FAILED: unexpected error" in text
+    assert "ValueError: unexpected" in text
+    assert harness.servers[0].events == ["start", "stop"]
