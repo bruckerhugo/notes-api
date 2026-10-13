@@ -60,20 +60,32 @@ jobs:
       - name: Build executable
         run: pyinstaller --noconfirm --clean packaging/notes.spec
 
-      # Start the real executable: embedded API, window, API round trip, exit.
+      # Start the real executable: embedded API, API round trip, window, exit.
       - name: Smoke test (Linux)
         if: runner.os == 'Linux'
-        run: ./dist/notes --smoke-test
+        timeout-minutes: 5
+        run: ./dist/notes --smoke-test --smoke-log smoke.log
       - name: Smoke test (macOS)
         if: runner.os == 'macOS'
-        run: ./dist/Notes.app/Contents/MacOS/notes --smoke-test
+        timeout-minutes: 5
+        run: ./dist/Notes.app/Contents/MacOS/notes --smoke-test --smoke-log smoke.log
       - name: Smoke test (Windows)
         if: runner.os == 'Windows'
+        timeout-minutes: 5
         shell: pwsh
-        # Windowed executable: wait for it explicitly and check its exit code.
+        # Windowed executable (no console): wait at most 2 minutes for it, check its
+        # exit code, and read the result from the log file.
         run: |
-          $p = Start-Process -FilePath dist\notes.exe -ArgumentList '--smoke-test' -Wait -PassThru
+          $p = Start-Process -FilePath dist\notes.exe -ArgumentList '--smoke-test','--smoke-log','smoke.log' -PassThru
+          if (-not $p.WaitForExit(120000)) {
+            Stop-Process -Id $p.Id -Force
+            throw "smoke test timed out"
+          }
           if ($p.ExitCode -ne 0) { throw "smoke test failed with exit code $($p.ExitCode)" }
+      - name: Smoke test log
+        if: always()
+        shell: bash
+        run: cat smoke.log 2>/dev/null || echo "no smoke.log written"
 
       - name: Package (Linux)
         if: runner.os == 'Linux'
