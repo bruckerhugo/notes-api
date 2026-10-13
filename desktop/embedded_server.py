@@ -3,6 +3,8 @@
 This is the only desktop module that imports the backend.
 """
 
+import logging
+import re
 import socket
 import threading
 import time
@@ -14,6 +16,26 @@ import uvicorn
 STARTUP_TIMEOUT = 10.0
 
 
+class _ErrorCollector(logging.Handler):
+    """Collect the errors uvicorn logs while starting (e.g. a failed lifespan)."""
+
+    def __init__(self) -> None:
+        super().__init__(level=logging.ERROR)
+        self.errors: list[str] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        exc = record.exc_info[1] if record.exc_info else None
+        self.errors.append(
+            str(exc) if exc is not None else _last_exception_line(record.getMessage())
+        )
+
+
+def _last_exception_line(text: str) -> str:
+    """Summarize a logged traceback by its last 'SomeError: message' line."""
+    matches = re.findall(r"^[\w.]+(?:Error|Exception): .*$", text, flags=re.MULTILINE)
+    return matches[-1] if matches else text.strip().splitlines()[0]
+
+
 class EmbeddedServer:
     """Serve the API on 127.0.0.1 (free port) in a background thread."""
 
@@ -22,6 +44,7 @@ class EmbeddedServer:
         self._server: uvicorn.Server | None = None
         self._thread: threading.Thread | None = None
         self._port: int | None = None
+        self._error: BaseException | None = None
 
     @property
     def base_url(self) -> str:
@@ -56,16 +79,32 @@ class EmbeddedServer:
             log_level="warning",
         )
         self._server = uvicorn.Server(config)
-        self._thread = threading.Thread(
-            target=self._server.run, kwargs={"sockets": [sock]}, daemon=True
-        )
-        self._thread.start()
+        uvicorn_errors = logging.getLogger("uvicorn.error")
+        collector = _ErrorCollector()
+        uvicorn_errors.addHandler(collector)
+        try:
+            self._error = None
+            self._thread = threading.Thread(target=self._serve, args=(sock,), daemon=True)
+            self._thread.start()
 
-        deadline = time.monotonic() + STARTUP_TIMEOUT
-        while not self._server.started:
-            if not self._thread.is_alive() or time.monotonic() > deadline:
-                raise RuntimeError("Embedded server failed to start")
-            time.sleep(0.01)
+            deadline = time.monotonic() + STARTUP_TIMEOUT
+            while not self._server.started:
+                if not self._thread.is_alive() or time.monotonic() > deadline:
+                    causes = collector.errors or ([str(self._error)] if self._error else [])
+                    cause = f": {causes[0]}" if causes else ""
+                    raise RuntimeError(f"Embedded server failed to start{cause}")
+                time.sleep(0.01)
+        finally:
+            uvicorn_errors.removeHandler(collector)
+
+    def _serve(self, sock: socket.socket) -> None:
+        # Keep the failure for start(): with log_config=None uvicorn no longer logs it,
+        # and an exception escaping a thread would be lost.
+        assert self._server is not None
+        try:
+            self._server.run(sockets=[sock])
+        except BaseException as exc:
+            self._error = exc
 
     def stop(self) -> None:
         if self._server is not None and self._thread is not None:
