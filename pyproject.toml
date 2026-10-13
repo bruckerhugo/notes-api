@@ -13,6 +13,9 @@ dependencies = [
 desktop = [
     "PySide6-Essentials>=6.7",
 ]
+build = [
+    "pyinstaller>=6.10",
+]
 dev = [
     "pytest",
     "httpx",
