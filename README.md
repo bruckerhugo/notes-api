@@ -7,7 +7,24 @@ The goal is a notes application made of:
 - a **REST API** (FastAPI + SQLite) exposing CRUD operations on notes,
 - a **desktop GUI** (PySide6) that consumes the API.
 
-The project is built step by step with TDD. The REST API is complete (`GET /health` plus full CRUD on `/notes`), and the PySide6 desktop app can list, view, create, edit and delete notes.
+The project was built step by step with TDD and is complete: a REST API (`GET /health` plus full CRUD on `/notes`), a PySide6 desktop app that lists, views, creates, edits and deletes notes, and standalone executables published on each release.
+
+## Download the app
+
+Each [GitHub Release](https://github.com/bruckerhugo/notes-api/releases) provides a standalone executable. It embeds the API, so there is nothing else to install or start:
+
+| System | File | How to run |
+|---|---|---|
+| Linux x86_64 | `notes-linux-x86_64.tar.gz` | `tar -xzf notes-linux-x86_64.tar.gz && ./notes` |
+| Windows x86_64 | `notes-windows-x86_64.exe` | Double-click it. SmartScreen may warn about an unsigned app: choose *More info → Run anyway*. |
+| macOS (Apple Silicon) | `notes-macos-arm64.zip` | Unzip it, then right-click `Notes.app` and choose *Open* the first time, because the app is not signed. |
+
+Notes are stored in `notes.db` in your user data directory:
+- Linux: `~/.local/share/notes-api/`
+- Windows: `%APPDATA%\notes-api\`
+- macOS: `~/Library/Application Support/notes-api/`
+
+On Linux the system needs the usual Qt runtime libraries. With X11 (not Wayland), this includes `libxcb-cursor0`, for example: `sudo apt install libxcb-cursor0 libegl1`.
 
 ## Requirements
 
@@ -85,17 +102,13 @@ curl -X DELETE http://localhost:8000/notes/1    # 204, empty body
 
 ## Run the desktop app
 
-Start the API first (see above), then in another terminal:
-
 ```bash
-.venv/bin/python -m desktop
+.venv/bin/python -m desktop                 # standalone: starts its own API, notes in your user data directory
+NOTES_API_URL=http://127.0.0.1:8000 .venv/bin/python -m desktop   # use an API you started yourself
+.venv/bin/python -m desktop --smoke-test    # start, check the API answers, exit (used to validate builds)
 ```
 
-The app connects to `http://127.0.0.1:8000` by default. Set `NOTES_API_URL` to use another server:
-
-```bash
-NOTES_API_URL=http://127.0.0.1:8765 .venv/bin/python -m desktop
-```
+By default the app runs the API in a background thread, on `127.0.0.1` with a free port, and stores notes in `notes.db` in your user data directory (see [Download the app](#download-the-app)). Set `NOTES_API_URL` to connect to an external API instead, for example one started with `uvicorn` as shown above.
 
 - **Left pane:** the note list. Click a note to open it, or click **New** to start a new note.
 - **Right pane:** the editor. **Save** (or `Ctrl+S`) creates or updates the note. **Delete** asks for confirmation first.
@@ -182,11 +195,39 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request 
 
 `main` is protected: changes go through a pull request, and the CI checks must pass before merging.
 
+## Releases
+
+`.github/workflows/release.yml` builds the standalone executables with [PyInstaller](https://pyinstaller.org/) (`packaging/notes.spec`):
+
+1. On a `v*` tag, it reruns the whole CI (`ci.yml` is reusable).
+2. It builds the executable on Linux, Windows and macOS, and **starts each one** with `--smoke-test`: embedded API, window, API round trip.
+3. It checks that the tag matches the version in `pyproject.toml`, then publishes the three files in a GitHub Release with generated release notes.
+
+Pull requests that touch the packaging run steps 2 only (build and smoke test, no publishing).
+
+To publish a release:
+
+```bash
+# 1. bump `version` in pyproject.toml through a pull request, then on an up-to-date main:
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+To build locally (the output goes to `dist/`):
+
+```bash
+.venv/bin/pip install -e ".[desktop,build]"
+.venv/bin/pyinstaller --noconfirm packaging/notes.spec
+QT_QPA_PLATFORM=offscreen ./dist/notes --smoke-test
+```
+
 ## Project layout
 
 ```
 backend/     FastAPI application
-desktop/     desktop GUI: HTTP client (api_client), Qt-free UI logic (presenter), Qt window (views/)
+desktop/     desktop GUI: HTTP client (api_client), Qt-free UI logic (presenter), Qt window (views/),
+             embedded API server for the standalone app (embedded_server)
+packaging/   PyInstaller entry point and spec
 tests/       pytest test suite (mirrors the package layout)
 CLAUDE.md    guidance for Claude Code when working in this repo
 ```
@@ -203,4 +244,4 @@ CLAUDE.md    guidance for Claude Code when working in this repo
 8. ✅ GUI presenter (UI logic, Qt-free)
 9. ✅ PySide6 main window
 10. ✅ End-to-end test + docs polish
-11. Release pipeline (PyInstaller builds published as GitHub Releases)
+11. ✅ Release pipeline (PyInstaller builds published as GitHub Releases)
