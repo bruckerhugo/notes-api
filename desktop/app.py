@@ -70,11 +70,15 @@ def main(argv: list[str] | None = None) -> int:
     # stack to the log and exit, instead of blocking the build forever.
     log_file = args.smoke_log.open("a", encoding="utf-8") if args.smoke_log else None
     armed = _arm_watchdog(log_file or sys.stderr)
+    if armed:
+        # Also dump the Python stack on a native crash (e.g. inside Qt).
+        faulthandler.enable(file=log_file or sys.stderr)
     try:
         return _run(smoke_test=True, report=report)
     finally:
         if armed:
             faulthandler.cancel_dump_traceback_later()
+            faulthandler.disable()
         if log_file is not None:
             log_file.close()
 
