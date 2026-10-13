@@ -10,16 +10,20 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+desktop = [
+    "PySide6-Essentials>=6.7",
+]
 dev = [
     "pytest",
     "httpx",
     "pytest-cov",
+    "pytest-qt",
     "ruff",
     "pre-commit",
 ]
 
-[tool.setuptools]
-packages = ["backend", "desktop"]
+[tool.setuptools.packages.find]
+include = ["backend*", "desktop*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -28,6 +32,8 @@ addopts = "-ra"
 [tool.coverage.run]
 source = ["backend", "desktop"]
 branch = true
+# Three lines that only call desktop.app.main(), which is tested.
+omit = ["desktop/__main__.py"]
 
 [tool.coverage.report]
 show_missing = true
