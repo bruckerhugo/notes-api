@@ -148,7 +148,7 @@ TOTAL                            72      4      0      0    94%
   - `db_session`: a SQLAlchemy session, to check the database state directly.
   - `engine`: the in-memory engine; the schema is created and dropped for each test.
 - `tests/backend/`: API tests, one file per feature.
-- `tests/desktop/`: desktop tests. The HTTP client is tested against the real API through `TestClient`, and network failures are simulated with `httpx.MockTransport`. The presenter is tested with an in-memory fake client and a fake view (`tests/desktop/fakes.py`). The Qt window is tested with [pytest-qt](https://pytest-qt.readthedocs.io/) (`qtbot`), with dialogs monkeypatched so that tests never block. Run the tests with `QT_QPA_PLATFORM=offscreen` if no display is available.
+- `tests/desktop/`: desktop tests. The HTTP client is tested against the real API through `TestClient`, and network failures are simulated with `httpx.MockTransport`. The presenter is tested with an in-memory fake client and a fake view (`tests/desktop/fakes.py`). `tests/desktop/test_e2e.py` drives the real window, presenter and HTTP client against the real API (in-memory database). It covers creating, editing, deleting and cancelling a deletion, validation errors, a note deleted by another client, and an unreachable API. The Qt window is tested with [pytest-qt](https://pytest-qt.readthedocs.io/) (`qtbot`), with dialogs monkeypatched so that tests never block. Run the tests with `QT_QPA_PLATFORM=offscreen` if no display is available.
 
 ## Quality gates
 
@@ -202,5 +202,5 @@ CLAUDE.md    guidance for Claude Code when working in this repo
 7. ✅ Desktop HTTP client
 8. ✅ GUI presenter (UI logic, Qt-free)
 9. ✅ PySide6 main window
-10. End-to-end test + docs polish
+10. ✅ End-to-end test + docs polish
 11. Release pipeline (PyInstaller builds published as GitHub Releases)
