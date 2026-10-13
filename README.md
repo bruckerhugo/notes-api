@@ -7,7 +7,7 @@ The goal is a notes application made of:
 - a **REST API** (FastAPI + SQLite) exposing CRUD operations on notes,
 - a **desktop GUI** (PySide6) that consumes the API.
 
-The project is built step by step with TDD. The REST API is complete: `GET /health` plus full CRUD on `/notes`. On the desktop side, the HTTP client (`desktop/api_client.py`) is done, and the GUI itself is in progress.
+The project is built step by step with TDD. The REST API is complete: `GET /health` plus full CRUD on `/notes`. On the desktop side, the HTTP client (`desktop/api_client.py`) and the presenter (`desktop/presenter.py`, Qt-free UI logic) are done. The Qt window is in progress.
 
 ## Requirements
 
@@ -128,7 +128,7 @@ TOTAL                            72      4      0      0    94%
   - `db_session`: a SQLAlchemy session, to check the database state directly.
   - `engine`: the in-memory engine; the schema is created and dropped for each test.
 - `tests/backend/`: API tests, one file per feature.
-- `tests/desktop/`: desktop tests. The HTTP client is tested against the real API through `TestClient`, and network failures are simulated with `httpx.MockTransport`.
+- `tests/desktop/`: desktop tests. The HTTP client is tested against the real API through `TestClient`, and network failures are simulated with `httpx.MockTransport`. The presenter is tested with an in-memory fake client and a fake view.
 
 ## Quality gates
 
@@ -166,7 +166,7 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request 
 
 ```
 backend/     FastAPI application
-desktop/     desktop GUI (HTTP client to the API for now)
+desktop/     desktop GUI: HTTP client and presenter (Qt window to come)
 tests/       pytest test suite (mirrors the package layout)
 CLAUDE.md    guidance for Claude Code when working in this repo
 ```
@@ -180,7 +180,7 @@ CLAUDE.md    guidance for Claude Code when working in this repo
 5. ✅ CRUD layer
 6. ✅ `/notes` REST endpoints
 7. ✅ Desktop HTTP client
-8. GUI presenter (UI logic, Qt-free)
+8. ✅ GUI presenter (UI logic, Qt-free)
 9. PySide6 main window
 10. End-to-end test + docs polish
 11. Release pipeline (PyInstaller builds published as GitHub Releases)
