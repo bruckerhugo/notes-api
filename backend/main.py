@@ -3,13 +3,15 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from backend.database import Base, engine
+from backend import database
+from backend.database import Base
 from backend.routers import notes
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    Base.metadata.create_all(engine)
+    # Read the module attribute: database.configure() may have replaced the engine.
+    Base.metadata.create_all(database.engine)
     yield
 
 
