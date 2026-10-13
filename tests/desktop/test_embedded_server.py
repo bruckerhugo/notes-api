@@ -53,11 +53,12 @@ def test_base_url_is_unavailable_before_start(tmp_path: Path) -> None:
         _ = EmbeddedServer(tmp_path / "notes.db").base_url
 
 
+@pytest.mark.filterwarnings("error::pytest.PytestUnhandledThreadExceptionWarning")
 def test_start_fails_clearly_when_the_database_cannot_be_opened(tmp_path: Path) -> None:
     not_a_file = tmp_path / "a-directory"
     not_a_file.mkdir()
 
-    with pytest.raises(RuntimeError, match="failed to start"):
+    with pytest.raises(RuntimeError, match="failed to start: .*unable to open database file"):
         EmbeddedServer(not_a_file).start()
 
 
