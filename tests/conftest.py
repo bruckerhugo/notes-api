@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,6 +10,16 @@ from sqlalchemy.pool import StaticPool
 
 from backend.database import Base, get_db
 from backend.main import app
+
+DEFAULT_DB_FILE = Path("notes.db")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def no_default_database_file_created() -> Iterator[None]:
+    """Tests must never write the default notes.db (they use in-memory or tmp databases)."""
+    existed_before = DEFAULT_DB_FILE.exists()
+    yield
+    assert existed_before or not DEFAULT_DB_FILE.exists(), "a test created ./notes.db"
 
 
 @pytest.fixture
