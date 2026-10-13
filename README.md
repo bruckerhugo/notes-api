@@ -7,7 +7,7 @@ The goal is a notes application made of:
 - a **REST API** (FastAPI + SQLite) exposing CRUD operations on notes,
 - a **desktop GUI** (PySide6) that consumes the API.
 
-The project is built step by step with TDD. The REST API is complete: `GET /health` plus full CRUD on `/notes`. On the desktop side, the HTTP client (`desktop/api_client.py`) and the presenter (`desktop/presenter.py`, Qt-free UI logic) are done. The Qt window is in progress.
+The project is built step by step with TDD. The REST API is complete (`GET /health` plus full CRUD on `/notes`), and the PySide6 desktop app can list, view, create, edit and delete notes.
 
 ## Requirements
 
@@ -20,7 +20,7 @@ The project is built step by step with TDD. The REST API is complete: `GET /heal
 git clone https://github.com/bruckerhugo/notes-api.git
 cd notes-api
 python3 -m venv .venv
-.venv/bin/pip install -e ".[dev]"
+.venv/bin/pip install -e ".[dev,desktop]"
 .venv/bin/pre-commit install      # Git hooks, see "Quality gates" below
 ```
 
@@ -30,7 +30,7 @@ python3 -m venv .venv
 >   ```bash
 >   python3 -m venv --without-pip .venv
 >   python3 -m pip --python .venv/bin/python install pip
->   .venv/bin/pip install -e ".[dev]"
+>   .venv/bin/pip install -e ".[dev,desktop]"
 >   ```
 
 ## Run the API
@@ -83,6 +83,26 @@ curl -X DELETE http://localhost:8000/notes/1    # 204, empty body
 
 `title` is required. Leading and trailing whitespace is removed, then the title must be 1–200 characters long, so a whitespace-only title is rejected. `content` is optional and defaults to `""`. For `PATCH`, both fields are optional, but sending `null` is rejected (422). `updated_at` changes on each update.
 
+## Run the desktop app
+
+Start the API first (see above), then in another terminal:
+
+```bash
+.venv/bin/python -m desktop
+```
+
+The app connects to `http://127.0.0.1:8000` by default. Set `NOTES_API_URL` to use another server:
+
+```bash
+NOTES_API_URL=http://127.0.0.1:8765 .venv/bin/python -m desktop
+```
+
+- **Left pane:** the note list. Click a note to open it, or click **New** to start a new note.
+- **Right pane:** the editor. **Save** (or `Ctrl+S`) creates or updates the note. **Delete** asks for confirmation first.
+- Errors, such as an unreachable API or an invalid title, appear in a dialog. Confirmations appear in the status bar.
+
+The `desktop` extra installs `PySide6-Essentials` (Qt widgets only, about 250 MB, instead of the 670 MB full `PySide6` package). On WSL2, the window appears through WSLg.
+
 ## Tests
 
 The tests use **pytest**. They run against an **in-memory SQLite database**, which is created fresh for every test. Your `notes.db` is never touched, and no server needs to be running.
@@ -128,7 +148,7 @@ TOTAL                            72      4      0      0    94%
   - `db_session`: a SQLAlchemy session, to check the database state directly.
   - `engine`: the in-memory engine; the schema is created and dropped for each test.
 - `tests/backend/`: API tests, one file per feature.
-- `tests/desktop/`: desktop tests. The HTTP client is tested against the real API through `TestClient`, and network failures are simulated with `httpx.MockTransport`. The presenter is tested with an in-memory fake client and a fake view.
+- `tests/desktop/`: desktop tests. The HTTP client is tested against the real API through `TestClient`, and network failures are simulated with `httpx.MockTransport`. The presenter is tested with an in-memory fake client and a fake view (`tests/desktop/fakes.py`). The Qt window is tested with [pytest-qt](https://pytest-qt.readthedocs.io/) (`qtbot`), with dialogs monkeypatched so that tests never block. Run the tests with `QT_QPA_PLATFORM=offscreen` if no display is available.
 
 ## Quality gates
 
@@ -158,7 +178,7 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request 
 |---|---|
 | `lint` | Runs the same hooks as locally (`pre-commit run --all-files`): compile check, ruff, tests |
 | `test-backend` | Runs `pytest tests/backend` with coverage of `backend` on Python 3.12 and 3.13, fails below 90%, and uploads the coverage report (XML + HTML) as an artifact |
-| `test-desktop` | Runs `pytest tests/desktop` with coverage of `desktop`, fails below 90%, and uploads the report |
+| `test-desktop` | Installs the Qt system libraries, runs `pytest tests/desktop` (offscreen Qt) with coverage of `desktop`, fails below 90%, and uploads the report |
 
 `main` is protected: changes go through a pull request, and the CI checks must pass before merging.
 
@@ -166,7 +186,7 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request 
 
 ```
 backend/     FastAPI application
-desktop/     desktop GUI: HTTP client and presenter (Qt window to come)
+desktop/     desktop GUI: HTTP client (api_client), Qt-free UI logic (presenter), Qt window (views/)
 tests/       pytest test suite (mirrors the package layout)
 CLAUDE.md    guidance for Claude Code when working in this repo
 ```
@@ -181,6 +201,6 @@ CLAUDE.md    guidance for Claude Code when working in this repo
 6. ✅ `/notes` REST endpoints
 7. ✅ Desktop HTTP client
 8. ✅ GUI presenter (UI logic, Qt-free)
-9. PySide6 main window
+9. ✅ PySide6 main window
 10. End-to-end test + docs polish
 11. Release pipeline (PyInstaller builds published as GitHub Releases)
