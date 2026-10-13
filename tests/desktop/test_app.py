@@ -57,6 +57,16 @@ def test_main_opens_the_window_and_returns_the_exit_code(
         shown.extend(w.windowTitle() for w in QApplication.topLevelWidgets() if w.isVisible())
         return 7
 
+    real_create_window = desktop.app.create_window
+
+    def tracked_create_window(api: object) -> object:
+        # Hand the window to qtbot so it is closed and destroyed after the test;
+        # a leaked live window broke the following Qt tests under coverage.
+        window = real_create_window(api)
+        qtbot.addWidget(window)
+        return window
+
+    monkeypatch.setattr(desktop.app, "create_window", tracked_create_window)
     monkeypatch.setattr(desktop.app, "NotesClient", FakeClient)
     monkeypatch.setattr(QApplication, "exec", staticmethod(fake_exec))
 
