@@ -10,5 +10,7 @@ htmlcov/
 dist/
 build/
 
-# Local Claude Code files (agents, settings)
-.claude/
+# Local Claude Code files, except the shared project agents and commands
+.claude/*
+!.claude/agents/
+!.claude/commands/
