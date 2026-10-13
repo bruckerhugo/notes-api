@@ -19,14 +19,14 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = ["backend"]
+packages = ["backend", "desktop"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
 
 [tool.coverage.run]
-source = ["backend"]
+source = ["backend", "desktop"]
 branch = true
 
 [tool.coverage.report]

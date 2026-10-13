@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-REST API for notes (CRUD, FastAPI, SQLite via SQLAlchemy 2.0, Pydantic v2) plus a PySide6 desktop GUI that consumes it. The project is built incrementally. The REST API is complete: `GET /health`, `POST /notes`, `GET /notes` (with `skip`/`limit` pagination, ordered by id), `GET /notes/{id}`, `PATCH /notes/{id}` and `DELETE /notes/{id}` (204). `PATCH` is a partial update: it applies `NoteUpdate.model_dump(exclude_unset=True)`, and an explicit `null` returns 422. Unknown ids return 404 `{"detail": "Note not found"}` via the router helper `_get_note_or_404`. Note ids must be canonical integers in the int64 range (`NoteId`), otherwise 422. Next: GitHub CI (plan step 3), then the desktop client. The desktop GUI does not exist yet.
+REST API for notes (CRUD, FastAPI, SQLite via SQLAlchemy 2.0, Pydantic v2) plus a PySide6 desktop GUI that consumes it. The project is built incrementally. The REST API is complete: `GET /health`, `POST /notes`, `GET /notes` (with `skip`/`limit` pagination, ordered by id), `GET /notes/{id}`, `PATCH /notes/{id}` and `DELETE /notes/{id}` (204). `PATCH` is a partial update: it applies `NoteUpdate.model_dump(exclude_unset=True)`, and an explicit `null` returns 422. Unknown ids return 404 `{"detail": "Note not found"}` via the router helper `_get_note_or_404`. Note ids must be canonical integers in the int64 range (`NoteId`), otherwise 422. The desktop HTTP client `desktop/api_client.py` exists. Next: the GUI presenter, then the PySide6 window.
 
 ## Commands
 
@@ -29,16 +29,16 @@ Hooks are defined in `.pre-commit-config.yaml` and are all local, using the `.ve
 ## Workflow rules
 
 - **Strict TDD**: write the failing test first, run it to see it fail, write the minimal code, then refactor. Commit only when tests are green, because the pre-commit hook blocks commits on syntax errors, test collection errors, lint failures or failing tests. Never use `--no-verify`.
-- Planned Git flow: one branch per step, PR to `main`, merge only when CI is green. The CI workflow is `.github/workflows/ci.yml`, with jobs `lint` (runs the pre-commit hooks) and `test-backend` (Python 3.12/3.13, coverage ≥ 90%). Add a `test-desktop` job with the desktop client. CI recreates `.venv`, so the hooks' `.venv/bin/...` entries work unchanged. The main branch is `main`, and the remote `origin` is the public repository `github.com/bruckerhugo/notes-api`.
+- Planned Git flow: one branch per step, PR to `main`, merge only when CI is green. The CI workflow is `.github/workflows/ci.yml`, with jobs `lint` (runs the pre-commit hooks), `test-backend` (Python 3.12/3.13, `--cov=backend` ≥ 90%) and `test-desktop` (`--cov=desktop` ≥ 90%). Each job limits `--cov` to its own package, otherwise the package that is not tested pulls the total under the threshold. `main` is protected by a ruleset: PR required, the CI checks must pass, no force push or deletion. CI recreates `.venv`, so the hooks' `.venv/bin/...` entries work unchanged. The main branch is `main`, and the remote `origin` is the public repository `github.com/bruckerhugo/notes-api`.
 
 ## Architecture
 
-`backend/` and the test setup are in place. `desktop/` is still the target design.
+`backend/`, the test setup and `desktop/api_client.py` are in place. The rest of `desktop/` is still the target design.
 
 
 - `backend/` is layered as `routers/` (HTTP only) → `crud.py` (data access, no HTTP) → `models.py` (ORM). `schemas.py` holds the Pydantic I/O models, kept separate from the ORM models. `database.get_db()` is a FastAPI dependency, so tests override it with an in-memory SQLite engine (`StaticPool`). Tables are created by the app `lifespan` (`Base.metadata.create_all`). There are no migrations yet.
 - `desktop/` uses three layers so the GUI stays testable:
-  - `NotesClient` wraps an injected `httpx.Client`. Tests pass the FastAPI `TestClient`, so the client talks to the real API without network. It maps 404, 422 and connection errors to domain exceptions.
+  - `NotesClient` (done) wraps an injected `httpx.Client` and returns frozen `Note` dataclasses with UTC-aware datetimes. Tests pass the FastAPI `TestClient`, so the client talks to the real API without network. Transport failures are simulated with `httpx.MockTransport`. Errors map to `NotesApiError` subclasses: `NoteNotFound` (404, with `.note_id`), `ValidationError` (422, readable `field: msg`) and `ApiUnavailable` (connection errors and timeouts). Any other error status raises the base `NotesApiError`. `desktop/` must not import `backend/`.
   - The `Presenter` holds all UI logic, has no Qt dependency, and is tested with fake client and view objects.
   - The PySide6 view stays thin and is tested with `pytest-qt` (`qtbot`).
 - `tests/` mirrors the packages (`tests/backend/`, later `tests/desktop/`). `tests/conftest.py` provides three fixtures: `engine` (in-memory DB, schema created and dropped for each test), `db_session` (to assert directly on DB state) and `client`. `client` is a `TestClient` with `get_db` overridden. It is deliberately not used as a context manager, so the lifespan does not run and no `notes.db` file is created on disk.

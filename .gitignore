@@ -9,3 +9,6 @@ htmlcov/
 *.db
 dist/
 build/
+
+# Local Claude Code files (agents, settings)
+.claude/
