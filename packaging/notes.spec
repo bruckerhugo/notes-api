@@ -1,5 +1,6 @@
 # PyInstaller spec for the standalone desktop app (one file; .app bundle on macOS).
 # Build from the repository root: pyinstaller packaging/notes.spec
+import os
 import sys
 from pathlib import Path
 
@@ -26,6 +27,8 @@ if sys.platform == "darwin":
     coll = COLLECT(exe, a.binaries, a.datas, name="notes")
     app = BUNDLE(coll, name="Notes.app", bundle_identifier="io.github.bruckerhugo.notes")
 else:
+    # NOTES_CONSOLE_BUILD=1 builds a console variant, used to diagnose startup issues.
+    console = os.environ.get("NOTES_CONSOLE_BUILD") == "1"
     exe = EXE(
-        pyz, a.scripts, a.binaries, a.datas, name="notes", console=False, upx=False
+        pyz, a.scripts, a.binaries, a.datas, name="notes", console=console, upx=False
     )

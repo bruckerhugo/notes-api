@@ -84,6 +84,18 @@ jobs:
             throw "smoke test timed out"
           }
           if ($p.ExitCode -ne 0) { throw "smoke test failed with exit code $($p.ExitCode)" }
+      - name: Diagnose a failed Windows smoke test (console build)
+        if: failure() && runner.os == 'Windows'
+        timeout-minutes: 6
+        shell: pwsh
+        env:
+          NOTES_CONSOLE_BUILD: "1"
+          QT_DEBUG_PLUGINS: "1"
+        run: |
+          pyinstaller --noconfirm --distpath dist-console --workpath build-console packaging/notes.spec
+          $job = Start-Job { & "$using:PWD\dist-console\notes.exe" --smoke-test 2>&1 }
+          if (-not (Wait-Job $job -Timeout 90)) { "TIMED OUT after 90 s" }
+          Receive-Job $job | Select-Object -Last 80
       - name: Smoke test log
         if: always()
         shell: bash
