@@ -33,6 +33,11 @@ Hooks are defined in `.pre-commit-config.yaml` and are all local, using the `.ve
 - `packaging/notes.spec` builds a PyInstaller one-file `notes` executable (`Notes.app` on macOS). Hidden imports: `backend.*`, `uvicorn.*` and `sqlalchemy.dialects.sqlite`. PyInstaller is in the `build` extra. Build locally with `pyinstaller --noconfirm packaging/notes.spec`, then validate with `QT_QPA_PLATFORM=offscreen ./dist/notes --smoke-test`.
 - `.github/workflows/release.yml` runs on `v*` tags. It reuses `ci.yml` (`workflow_call`), builds and smoke-tests on ubuntu, windows and macos (the Windows exe is windowed, so it is checked with `Start-Process -Wait -PassThru`), verifies that the tag equals `v` + the `pyproject.toml` version, and publishes the assets with `softprops/action-gh-release`. On PRs touching packaging-related paths, it builds and smoke-tests only.
 - To release: bump `version` in `pyproject.toml` through a PR, then tag `vX.Y.Z` on `main` and push the tag.
+- Windowed builds pitfalls (they cost several CI iterations):
+  - Windowed builds have no console: `sys.stdout` and `sys.stderr` are `None`. Never call methods on them. uvicorn must run with `log_config=None`, because its formatter calls `sys.stdout.isatty()`.
+  - An exception escaping a windowed build opens a hidden modal "Unhandled exception" dialog, and CI then hangs. `--smoke-test` therefore catches everything and writes it to `--smoke-log`. It checks the API before opening the window, so no error dialog can appear, and it arms a `faulthandler` watchdog (`SMOKE_TIMEOUT`, 60 s) that dumps the stacks and exits.
+  - If the Windows smoke test fails, the workflow builds a console variant (`NOTES_CONSOLE_BUILD=1`) and runs it with `QT_DEBUG_PLUGINS=1` to show the real error.
+  - Runtime dependencies of the desktop app (httpx, PySide6) must be in the `desktop` extra, not only in `dev`: the release build installs `.[desktop,build]`.
 
 ## Workflow rules
 
