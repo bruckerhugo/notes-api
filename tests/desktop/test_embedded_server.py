@@ -63,3 +63,14 @@ def test_start_fails_clearly_when_the_database_cannot_be_opened(tmp_path: Path) 
 
 def test_stop_without_start_does_nothing(tmp_path: Path) -> None:
     EmbeddedServer(tmp_path / "notes.db").stop()
+
+
+def test_starts_without_stdout_and_stderr(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Windowed PyInstaller builds have no console: sys.stdout and sys.stderr are None.
+    monkeypatch.setattr("sys.stdout", None)
+    monkeypatch.setattr("sys.stderr", None)
+
+    with EmbeddedServer(tmp_path / "notes.db") as server:
+        response = httpx.get(f"{server.base_url}/health")
+
+    assert response.status_code == 200

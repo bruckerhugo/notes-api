@@ -43,9 +43,17 @@ class EmbeddedServer:
         self._port = sock.getsockname()[1]
 
         # Explicit loop/protocol choices avoid optional dependencies (uvloop, httptools,
-        # websockets), which matters for the PyInstaller build.
+        # websockets), which matters for the PyInstaller build. log_config=None keeps
+        # uvicorn from configuring console logging: its formatter calls
+        # sys.stdout.isatty(), and windowed builds have no console (sys.stdout is None).
         config = uvicorn.Config(
-            app, loop="asyncio", http="h11", ws="none", lifespan="on", log_level="warning"
+            app,
+            loop="asyncio",
+            http="h11",
+            ws="none",
+            lifespan="on",
+            log_config=None,
+            log_level="warning",
         )
         self._server = uvicorn.Server(config)
         self._thread = threading.Thread(
