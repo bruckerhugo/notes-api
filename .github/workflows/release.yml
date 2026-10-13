@@ -113,7 +113,7 @@ jobs:
         run: cp dist/notes.exe ${{ matrix.asset }}
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.name }}
+          name: notes-${{ matrix.name }}
           path: ${{ matrix.asset }}
           if-no-files-found: error
 
@@ -132,10 +132,16 @@ jobs:
             echo "::error::tag ${GITHUB_REF_NAME} does not match pyproject version v$version"
             exit 1
           fi
+      # Only the executables: the reused CI also uploads coverage reports in this run.
       - uses: actions/download-artifact@v4
         with:
+          pattern: notes-*
           path: assets
           merge-multiple: true
+      - name: Check the release assets
+        run: |
+          ls -l assets
+          test "$(ls assets | wc -l)" -eq 3
       - uses: softprops/action-gh-release@v2
         with:
           files: assets/*
