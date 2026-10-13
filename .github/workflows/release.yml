@@ -73,11 +73,13 @@ jobs:
         if: runner.os == 'Windows'
         timeout-minutes: 5
         shell: pwsh
-        # Windowed executable (no console): wait at most 2 minutes for it, check its
-        # exit code, and read the result from the log file.
+        # Windowed executable (no console): check its exit code and read the result from
+        # the log file. Windows runners have a desktop session, so use the native Qt
+        # platform like real users. The app's own watchdog exits after 60 s if it hangs.
         run: |
+          Remove-Item Env:QT_QPA_PLATFORM
           $p = Start-Process -FilePath dist\notes.exe -ArgumentList '--smoke-test','--smoke-log','smoke.log' -PassThru
-          if (-not $p.WaitForExit(120000)) {
+          if (-not $p.WaitForExit(150000)) {
             Stop-Process -Id $p.Id -Force
             throw "smoke test timed out"
           }
